@@ -1,5 +1,6 @@
 const bot = require('../lib/telegramBot');
-const { db, admin } = require('../lib/firebaseAdmin');
+const { db } = require('../lib/firebaseAdmin');
+const { FieldValue } = require('firebase-admin/firestore');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -131,7 +132,7 @@ module.exports = async (req, res) => {
           developerName: 'Admin',
           appName: 'Global Announcement',
           text: messageText,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
+          createdAt: FieldValue.serverTimestamp()
         });
         
         await bot.sendMessage(chatId, `✅ Global broadcast sent:\n"${messageText}"`);
