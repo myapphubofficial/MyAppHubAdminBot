@@ -395,6 +395,9 @@ module.exports = async (req, res) => {
     res.status(200).send('OK');
   } catch (error) {
     console.error('Webhook error:', error);
-    res.status(500).send('Error');
+    try {
+      await bot.sendMessage(adminChatId, `⚠️ Fatal Error: ${error.message}`.substring(0, 4000));
+    } catch(e) {}
+    res.status(200).send('OK');
   }
 };
