@@ -134,6 +134,31 @@ module.exports = async (req, res) => {
           text: messageText,
           createdAt: FieldValue.serverTimestamp()
         });
+
+        // Trigger Push Notification Server
+        try {
+          const payload = {
+            targetId: 'all',
+            title: '📢 Admin Announcement',
+            body: messageText
+          };
+          
+          // Send to Users
+          await fetch('https://myapphub-notifications.vercel.app/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...payload, targetCollection: 'users' })
+          });
+          
+          // Send to Developers
+          await fetch('https://myapphub-notifications.vercel.app/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...payload, targetCollection: 'developers' })
+          });
+        } catch (e) {
+          console.error("Push Notification Failed", e);
+        }
         
         await bot.sendMessage(chatId, `✅ Global broadcast sent:\n"${messageText}"`);
       }
