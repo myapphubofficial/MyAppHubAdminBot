@@ -292,7 +292,7 @@ module.exports = async (req, res) => {
           await bot.sendMessage(chatId, `Found ${snap.size} pending apps:`);
           for (const doc of snap.docs) {
             const app = doc.data();
-            const message = `📱 *${app.name}*\nDeveloper: ${app.developer}\nCategory: ${app.category}\nStatus: ${app.status}\nDescription: ${app.shortDesc?.substring(0, 50) || ''}...`;
+            const message = `📱 *${app.name}*\nDeveloper: ${app.developer}\nCategory: ${app.category}\nStatus: ${app.status || 'unknown'}\nDescription: ${app.shortDesc?.substring(0, 50) || ''}...`;
             await bot.sendMessage(chatId, message, {
               parse_mode: 'Markdown',
               reply_markup: {
@@ -321,7 +321,7 @@ module.exports = async (req, res) => {
           let msgText = `📱 *Apps ${start + 1} - ${start + docs.length}*\n\n`;
           docs.forEach((doc, i) => {
             const app = doc.data();
-            msgText += `*${start + i + 1}. ${app.name}*\n   Status: _${app.status}_\n   Dev: ${app.developer}\n\n`;
+            msgText += `*${start + i + 1}. ${app.name}*\n   Status: _${app.status || 'published'}_\n   Dev: ${app.developer}\n\n`;
           });
           await bot.sendMessage(chatId, msgText, { parse_mode: 'Markdown' });
         }
@@ -369,7 +369,7 @@ module.exports = async (req, res) => {
         } else {
           for (const doc of matches.slice(0, 3)) { // Limit to 3 matches
             const app = doc.data();
-            const message = `📱 *${app.name}*\nID: \`${doc.id}\`\nDeveloper: ${app.developer}\nCategory: ${app.category}\nStatus: *${app.status}*\nDownloads: ${app.downloads || 0}\nDescription: ${app.shortDesc?.substring(0, 100) || ''}...`;
+            const message = `📱 *${app.name}*\nID: \`${doc.id}\`\nDeveloper: ${app.developer}\nCategory: ${app.category}\nStatus: *${app.status || 'published'}*\nDownloads: ${app.downloads || 0}\nDescription: ${app.shortDesc?.substring(0, 100) || ''}...`;
             await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
           }
         }
@@ -385,7 +385,23 @@ module.exports = async (req, res) => {
         } else {
           for (const doc of matches.slice(0, 3)) {
             const dev = doc.data();
-            const message = `👨‍💻 *${dev.name}*\nID: \`${doc.id}\`\nEmail: ${dev.email}\nStatus: *${dev.status}*\nJoined: ${dev.createdAt ? new Date(dev.createdAt.toDate()).toLocaleDateString() : 'Unknown'}`;
+            const message = `👨‍💻 *${dev.name}*\nID: \`${doc.id}\`\nEmail: ${dev.email}\nStatus: *${dev.status || 'approved'}*\nJoined: ${dev.createdAt ? new Date(dev.createdAt.toDate()).toLocaleDateString() : 'Unknown'}`;
+            await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+          }
+        }
+      }
+
+      else if (text.startsWith('/info user ')) {
+        const query = text.replace('/info user ', '').trim().toLowerCase();
+        const snap = await db.collection('users').get();
+        const matches = snap.docs.filter(d => d.data().fullName && d.data().fullName.toLowerCase().includes(query));
+        
+        if (matches.length === 0) {
+          await bot.sendMessage(chatId, `❌ No users found matching "${query}"`);
+        } else {
+          for (const doc of matches.slice(0, 3)) {
+            const user = doc.data();
+            const message = `👥 *${user.fullName}*\nID: \`${doc.id}\`\nUsername: @${user.username || 'unknown'}\nEmail: ${user.email}\nJoined: ${user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString() : 'Unknown'}`;
             await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
           }
         }
