@@ -25,7 +25,24 @@ module.exports = async (req, res) => {
 
       if (data.startsWith('app_approve_')) {
         const appId = data.replace('app_approve_', '');
+        const appDoc = await db.collection('apps').doc(appId).get();
+        const appData = appDoc.data();
+        
         await db.collection('apps').doc(appId).update({ status: 'published' });
+        
+        if (appData && appData.developerUid) {
+          fetch('https://myapphub-notifications.vercel.app/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              targetCollection: 'developers',
+              targetId: appData.developerUid,
+              title: '✅ App Approved!',
+              body: `Congratulations! Your app "${appData.title}" has been approved and published.`
+            })
+          }).catch(console.error);
+        }
+
         await bot.editMessageText(`${callbackQuery.message.text}\n\n*Status:* ✅ Approved & Published!`, {
           chat_id: chatId,
           message_id: messageId,
@@ -35,7 +52,24 @@ module.exports = async (req, res) => {
       
       else if (data.startsWith('app_reject_')) {
         const appId = data.replace('app_reject_', '');
+        const appDoc = await db.collection('apps').doc(appId).get();
+        const appData = appDoc.data();
+        
         await db.collection('apps').doc(appId).update({ status: 'rejected' });
+        
+        if (appData && appData.developerUid) {
+          fetch('https://myapphub-notifications.vercel.app/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              targetCollection: 'developers',
+              targetId: appData.developerUid,
+              title: '❌ App Rejected',
+              body: `Unfortunately, your app "${appData.title}" has been rejected. Please review our guidelines.`
+            })
+          }).catch(console.error);
+        }
+
         await bot.editMessageText(`${callbackQuery.message.text}\n\n*Status:* ❌ Rejected!`, {
           chat_id: chatId,
           message_id: messageId,
@@ -54,6 +88,18 @@ module.exports = async (req, res) => {
       else if (data.startsWith('dev_approve_')) {
         const uid = data.replace('dev_approve_', '');
         await db.collection('developers').doc(uid).update({ status: 'approved' });
+        
+        fetch('https://myapphub-notifications.vercel.app/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            targetCollection: 'developers',
+            targetId: uid,
+            title: '🎉 Account Approved!',
+            body: `Your Developer Account has been approved. You can now upload apps to MyAppHub!`
+          })
+        }).catch(console.error);
+
         await bot.editMessageText(`${callbackQuery.message.text}\n\n*Status:* ✅ Approved!`, {
           chat_id: chatId,
           message_id: messageId,
@@ -64,6 +110,18 @@ module.exports = async (req, res) => {
       else if (data.startsWith('dev_suspend_')) {
         const uid = data.replace('dev_suspend_', '');
         await db.collection('developers').doc(uid).update({ status: 'suspended' });
+        
+        fetch('https://myapphub-notifications.vercel.app/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            targetCollection: 'developers',
+            targetId: uid,
+            title: '⚠️ Account Suspended',
+            body: `Your Developer Account has been suspended by the Admin. Please contact support.`
+          })
+        }).catch(console.error);
+
         await bot.editMessageText(`${callbackQuery.message.text}\n\n*Status:* ❌ Suspended!`, {
           chat_id: chatId,
           message_id: messageId,
@@ -99,10 +157,28 @@ module.exports = async (req, res) => {
         const match = msg.reply_to_message.text.match(/app ID: (.+)/);
         if (match && match[1]) {
           const appId = match[1].trim();
+          
+          const appDoc = await db.collection('apps').doc(appId).get();
+          const appData = appDoc.data();
+          
           await db.collection('apps').doc(appId).update({ 
             status: 'action_required', 
             rejectionReason: text 
           });
+          
+          if (appData && appData.developerUid) {
+            fetch('https://myapphub-notifications.vercel.app/api/notify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                targetCollection: 'developers',
+                targetId: appData.developerUid,
+                title: '📝 Action Required',
+                body: `Action required for "${appData.title}": ${text}`
+              })
+            }).catch(console.error);
+          }
+
           await bot.sendMessage(chatId, `✅ Marked app ${appId} as "Action Required" and sent the reason to the developer!`);
           return res.status(200).send('OK');
         }
