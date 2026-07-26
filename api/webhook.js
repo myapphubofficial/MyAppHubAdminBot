@@ -109,9 +109,11 @@ module.exports = async (req, res) => {
 
       // Commands
       if (text.startsWith('/stats')) {
-        const usersSnap = await db.collection('users').count().get();
-        const devsSnap = await db.collection('developers').count().get();
-        const appsSnap = await db.collection('apps').count().get();
+        const [usersSnap, devsSnap, appsSnap] = await Promise.all([
+          db.collection('users').count().get(),
+          db.collection('developers').count().get(),
+          db.collection('apps').count().get()
+        ]);
         
         await bot.sendMessage(chatId, `📊 *Live Stats*\n\n👥 Users: ${usersSnap.data().count}\n👨‍💻 Developers: ${devsSnap.data().count}\n📱 Apps: ${appsSnap.data().count}`, { parse_mode: 'Markdown' });
       }
