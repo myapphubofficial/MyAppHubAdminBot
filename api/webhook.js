@@ -292,7 +292,7 @@ module.exports = async (req, res) => {
           await bot.sendMessage(chatId, `Found ${snap.size} pending apps:`);
           for (const doc of snap.docs) {
             const app = doc.data();
-            const message = `📱 *${app.title}*\nDeveloper: ${app.developerName}\nCategory: ${app.category}\nStatus: ${app.status}\nDescription: ${app.description?.substring(0, 50)}...`;
+            const message = `📱 *${app.name}*\nDeveloper: ${app.developer}\nCategory: ${app.category}\nStatus: ${app.status}\nDescription: ${app.shortDesc?.substring(0, 50) || ''}...`;
             await bot.sendMessage(chatId, message, {
               parse_mode: 'Markdown',
               reply_markup: {
@@ -321,7 +321,7 @@ module.exports = async (req, res) => {
           let msgText = `📱 *Apps ${start + 1} - ${start + docs.length}*\n\n`;
           docs.forEach((doc, i) => {
             const app = doc.data();
-            msgText += `*${start + i + 1}. ${app.title}*\n   Status: _${app.status}_\n   Dev: ${app.developerName}\n\n`;
+            msgText += `*${start + i + 1}. ${app.name}*\n   Status: _${app.status}_\n   Dev: ${app.developer}\n\n`;
           });
           await bot.sendMessage(chatId, msgText, { parse_mode: 'Markdown' });
         }
@@ -337,7 +337,7 @@ module.exports = async (req, res) => {
           let msgText = `👥 *Users ${start + 1} - ${start + docs.length}*\n\n`;
           docs.forEach((doc, i) => {
             const user = doc.data();
-            msgText += `*${start + i + 1}. ${user.name || 'Unknown'}*\n   Email: ${user.email}\n\n`;
+            msgText += `*${start + i + 1}. ${user.fullName || 'Unknown'}*\n   Email: ${user.email}\n\n`;
           });
           await bot.sendMessage(chatId, msgText, { parse_mode: 'Markdown' });
         }
@@ -362,14 +362,14 @@ module.exports = async (req, res) => {
       else if (text.startsWith('/info app ')) {
         const query = text.replace('/info app ', '').trim().toLowerCase();
         const snap = await db.collection('apps').get();
-        const matches = snap.docs.filter(d => d.data().title && d.data().title.toLowerCase().includes(query));
+        const matches = snap.docs.filter(d => d.data().name && d.data().name.toLowerCase().includes(query));
         
         if (matches.length === 0) {
           await bot.sendMessage(chatId, `❌ No apps found matching "${query}"`);
         } else {
           for (const doc of matches.slice(0, 3)) { // Limit to 3 matches
             const app = doc.data();
-            const message = `📱 *${app.title}*\nID: \`${doc.id}\`\nDeveloper: ${app.developerName}\nCategory: ${app.category}\nStatus: *${app.status}*\nDownloads: ${app.downloads || 0}\nDescription: ${app.description?.substring(0, 100)}...`;
+            const message = `📱 *${app.name}*\nID: \`${doc.id}\`\nDeveloper: ${app.developer}\nCategory: ${app.category}\nStatus: *${app.status}*\nDownloads: ${app.downloads || 0}\nDescription: ${app.shortDesc?.substring(0, 100) || ''}...`;
             await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
           }
         }
