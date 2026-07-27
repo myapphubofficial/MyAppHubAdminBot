@@ -37,8 +37,8 @@ module.exports = async (req, res) => {
             body: JSON.stringify({
               targetCollection: 'developers',
               targetId: appData.developerUid,
-              title: '✅ App Approved!',
-              body: `Congratulations! Your app "${appData.title}" has been approved and published.`
+              title: 'App Approved! 🎉',
+              body: `Congratulations! Your app "${appData.name}" has been approved and published.`
             })
           }).catch(console.error);
         }
@@ -64,8 +64,8 @@ module.exports = async (req, res) => {
             body: JSON.stringify({
               targetCollection: 'developers',
               targetId: appData.developerUid,
-              title: '❌ App Rejected',
-              body: `Unfortunately, your app "${appData.title}" has been rejected. Please review our guidelines.`
+              title: 'App Rejected ❌',
+              body: `Unfortunately, your app "${appData.name}" has been rejected. Please review our guidelines.`
             })
           }).catch(console.error);
         }
@@ -173,8 +173,8 @@ module.exports = async (req, res) => {
               body: JSON.stringify({
                 targetCollection: 'developers',
                 targetId: appData.developerUid,
-                title: '📝 Action Required',
-                body: `Action required for "${appData.title}": ${text}`
+                title: 'Action Required 📝',
+                body: `Action required for "${appData.name}": ${text}`
               })
             }).catch(console.error);
           }
