@@ -131,8 +131,17 @@ module.exports = async (req, res) => {
       
       else if (data.startsWith('del_notif_')) {
         const notifId = data.replace('del_notif_', '');
-        await db.collection('announcements').doc(notifId).delete();
-        await bot.editMessageText(`✅ Notification Deleted!`, {
+        await db.collection('notifications').doc(notifId).delete();
+        await bot.editMessageText(`✅ Notification Deleted from Inbox!`, {
+          chat_id: chatId,
+          message_id: messageId
+        });
+      }
+      
+      else if (data.startsWith('del_ann_')) {
+        const annId = data.replace('del_ann_', '');
+        await db.collection('announcements').doc(annId).delete();
+        await bot.editMessageText(`✅ Announcement Deleted!`, {
           chat_id: chatId,
           message_id: messageId
         });
@@ -261,23 +270,44 @@ module.exports = async (req, res) => {
         await bot.sendMessage(chatId, `✅ Global broadcast sent:\n"${messageText}"`);
       }
 
-      else if (text.startsWith('/notifications')) {
-        // Fetch 5 most recent announcements
+      else if (text.startsWith('/announcements')) {
         const annSnap = await db.collection('announcements')
             .orderBy('createdAt', 'desc')
             .limit(5)
             .get();
             
         if (annSnap.empty) {
-            await bot.sendMessage(chatId, 'No active notifications.');
+            await bot.sendMessage(chatId, 'No active announcements.');
         } else {
-            await bot.sendMessage(chatId, '🔔 *Recent Notifications*', { parse_mode: 'Markdown' });
+            await bot.sendMessage(chatId, '📢 *Recent Announcements*', { parse_mode: 'Markdown' });
             for (const doc of annSnap.docs) {
                 const ann = doc.data();
                 await bot.sendMessage(chatId, `*${ann.appName || 'Announcement'}*\n${ann.text}`, {
                     parse_mode: 'Markdown',
                     reply_markup: {
-                        inline_keyboard: [[{ text: '🗑️ Delete', callback_data: `del_notif_${doc.id}` }]]
+                        inline_keyboard: [[{ text: '🗑️ Delete Announcement', callback_data: `del_ann_${doc.id}` }]]
+                    }
+                });
+            }
+        }
+      }
+
+      else if (text.startsWith('/notifications')) {
+        const notifSnap = await db.collection('notifications')
+            .orderBy('timestamp', 'desc')
+            .limit(5)
+            .get();
+            
+        if (notifSnap.empty) {
+            await bot.sendMessage(chatId, 'No active notifications.');
+        } else {
+            await bot.sendMessage(chatId, '🔔 *Actual Notifications (User Inboxes)*', { parse_mode: 'Markdown' });
+            for (const doc of notifSnap.docs) {
+                const notif = doc.data();
+                await bot.sendMessage(chatId, `*${notif.title || 'Notification'}*\n${notif.body}`, {
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [[{ text: '🗑️ Delete Notification', callback_data: `del_notif_${doc.id}` }]]
                     }
                 });
             }
