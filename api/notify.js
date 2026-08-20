@@ -1,5 +1,6 @@
 const bot = require('../lib/telegramBot');
 const { db } = require('../lib/firebaseAdmin');
+const { runAutoCleanup } = require('../lib/cleanup');
 
 module.exports = async (req, res) => {
   // CORS configuration
@@ -15,6 +16,9 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
+
+  // Trigger background auto-cleanup for expired records
+  runAutoCleanup({ devHoursThreshold: 24, generalHoursThreshold: 48 }).catch(e => console.error('[Background Cleanup Error]', e));
 
   const { type, data } = req.body;
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;

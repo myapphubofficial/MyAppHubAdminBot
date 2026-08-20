@@ -1,6 +1,7 @@
 const bot = require('../lib/telegramBot');
 const { db } = require('../lib/firebaseAdmin');
 const { FieldValue } = require('firebase-admin/firestore');
+const { runAutoCleanup, deleteDeveloperPermanently } = require('../lib/cleanup');
 
 const NOTIFICATION_SECRET = process.env.NOTIFICATION_SECRET || 'mah_notif_sec_9b008eb655b9372bc6639c08e198eefe';
 const ADMIN_SECRET = process.env.ADMIN_SECRET || 'mah_admin_sec_2026_master';
@@ -117,16 +118,35 @@ module.exports = async (req, res) => {
 
       else if (data.startsWith('dev_suspend_')) {
         const uid = data.replace('dev_suspend_', '');
-        await db.collection('developers').doc(uid).update({ status: 'suspended' });
+        await db.collection('developers').doc(uid).update({ 
+          status: 'suspended',
+          suspendedAt: FieldValue.serverTimestamp()
+        });
         
         sendPush({
           targetCollection: 'developers',
           targetId: uid,
           title: '⚠️ Account Suspended',
-          body: `Your Developer Account has been suspended by the Admin. Please contact support.`
+          body: `Your Developer Account has been suspended by the Admin. Unresolved suspensions are purged in 24-48h.`
         });
 
-        await bot.editMessageText(`${callbackQuery.message.text}\n\n*Status:* ❌ Suspended!`, {
+        await bot.editMessageText(`${callbackQuery.message.text}\n\n*Status:* ❌ Suspended!\n⏳ _Scheduled for auto-purge in 24h._`, {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🗑️ Delete Permanently Now', callback_data: `dev_delete_${uid}` }]
+            ]
+          }
+        });
+      }
+
+      else if (data.startsWith('dev_delete_')) {
+        const uid = data.replace('dev_delete_', '');
+        await deleteDeveloperPermanently(uid);
+
+        await bot.editMessageText(`${callbackQuery.message.text}\n\n*Status:* 🗑️ Permanently Deleted from Firebase Auth & Firestore!`, {
           chat_id: chatId,
           message_id: messageId,
           parse_mode: 'Markdown'
@@ -224,6 +244,34 @@ module.exports = async (req, res) => {
         ]);
         
         await bot.sendMessage(chatId, `📊 *Live Stats*\n\n👥 Users: ${usersSnap.data().count}\n👨‍💻 Developers: ${devsSnap.data().count}\n📱 Apps: ${appsSnap.data().count}`, { parse_mode: 'Markdown' });
+      }
+
+      else if (text.startsWith('/cleanup')) {
+        await bot.sendMessage(chatId, `🧹 *Running System Cleanup...*`, { parse_mode: 'Markdown' });
+        try {
+          const stats = await runAutoCleanup({ devHoursThreshold: 24, generalHoursThreshold: 48 });
+          let report = `✅ *Cleanup Complete!*\n\n`;
+          report += `🗑️ Suspended Devs Purged: *${stats.deletedDevs}*\n`;
+          report += `📣 Old Announcements Cleaned: *${stats.deletedAnnouncements}*\n`;
+          report += `🔔 Old Notifications Cleaned: *${stats.deletedNotifications}*\n`;
+          if (stats.details.length > 0) {
+            report += `\n*Purged Details:*\n` + stats.details.join('\n');
+          }
+          await bot.sendMessage(chatId, report, { parse_mode: 'Markdown' });
+        } catch (err) {
+          await bot.sendMessage(chatId, `❌ Cleanup error: ${err.message}`);
+        }
+      }
+
+      else if (text.startsWith('/deletedev ')) {
+        const uid = text.replace('/deletedev ', '').trim();
+        if (!uid) {
+          await bot.sendMessage(chatId, `Usage: \`/deletedev <developer_uid>\``, { parse_mode: 'Markdown' });
+        } else {
+          await bot.sendMessage(chatId, `⏳ Deleting developer \`${uid}\`...`, { parse_mode: 'Markdown' });
+          const res = await deleteDeveloperPermanently(uid);
+          await bot.sendMessage(chatId, `✅ *Developer Deleted!*\n\n• Firebase Auth: ${res.authDeleted ? 'Deleted ✅' : 'Already Clean'}\n• Firestore Doc: ${res.devDocDeleted ? 'Deleted ✅' : 'Already Clean'}\n• Apps Removed: ${res.appsDeleted}`, { parse_mode: 'Markdown' });
+        }
       }
       
       else if (text.startsWith('/broadcast ')) {
