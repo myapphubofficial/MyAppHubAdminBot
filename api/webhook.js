@@ -144,9 +144,13 @@ module.exports = async (req, res) => {
 
       else if (data.startsWith('dev_delete_')) {
         const uid = data.replace('dev_delete_', '');
-        await deleteDeveloperPermanently(uid);
+        const delResult = await deleteDeveloperPermanently(uid);
+        let authStatus = delResult.authDeleted ? '✅ Auth Deleted' : '❌ Auth Failed';
+        if (delResult.authError && delResult.authError !== 'already-deleted') {
+          authStatus += ` (${delResult.authError})`;
+        }
 
-        await bot.editMessageText(`${callbackQuery.message.text}\n\n*Status:* 🗑️ Permanently Deleted from Firebase Auth & Firestore!`, {
+        await bot.editMessageText(`${callbackQuery.message.text}\n\n*Status:* 🗑️ Permanently Deleted!\n${authStatus}\nFirestore: ${delResult.devDocDeleted ? '✅' : '—'} | Apps: ${delResult.appsDeleted}`, {
           chat_id: chatId,
           message_id: messageId,
           parse_mode: 'Markdown'
@@ -269,8 +273,14 @@ module.exports = async (req, res) => {
           await bot.sendMessage(chatId, `Usage: \`/deletedev <developer_uid>\``, { parse_mode: 'Markdown' });
         } else {
           await bot.sendMessage(chatId, `⏳ Deleting developer \`${uid}\`...`, { parse_mode: 'Markdown' });
-          const res = await deleteDeveloperPermanently(uid);
-          await bot.sendMessage(chatId, `✅ *Developer Deleted!*\n\n• Firebase Auth: ${res.authDeleted ? 'Deleted ✅' : 'Already Clean'}\n• Firestore Doc: ${res.devDocDeleted ? 'Deleted ✅' : 'Already Clean'}\n• Apps Removed: ${res.appsDeleted}`, { parse_mode: 'Markdown' });
+          const delResult = await deleteDeveloperPermanently(uid);
+          let authStatus = delResult.authDeleted ? 'Deleted ✅' : `❌ FAILED`;
+          if (delResult.authError && delResult.authError !== 'already-deleted') {
+            authStatus += `\n   ⚠️ Error: \`${delResult.authError}\``;
+          } else if (delResult.authError === 'already-deleted') {
+            authStatus = 'Already Clean ✅';
+          }
+          await bot.sendMessage(chatId, `✅ *Developer Deleted!*\n\n• Firebase Auth: ${authStatus}\n• Firestore Doc: ${delResult.devDocDeleted ? 'Deleted ✅' : 'Already Clean'}\n• Apps Removed: ${delResult.appsDeleted}`, { parse_mode: 'Markdown' });
         }
       }
       
